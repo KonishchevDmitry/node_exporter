@@ -53,6 +53,7 @@ var (
 		return nil
 	}).String()
 	oldUnitExclude         = kingpin.Flag("collector.systemd.unit-blacklist", "DEPRECATED: Use collector.systemd.unit-exclude").Hidden().String()
+	systemdUser            = kingpin.Flag("collector.systemd.user", "Establish user connection instead of system").Bool()
 	systemdPrivate         = kingpin.Flag("collector.systemd.private", "Establish a private, direct connection to systemd without dbus (Strongly discouraged since it requires root. For testing purposes only).").Hidden().Bool()
 	enableTaskMetrics      = kingpin.Flag("collector.systemd.enable-task-metrics", "Enables service unit tasks metrics unit_tasks_current and unit_tasks_max").Bool()
 	enableRestartsMetrics  = kingpin.Flag("collector.systemd.enable-restarts-metrics", "Enables service unit metric service_restart_total").Bool()
@@ -433,10 +434,14 @@ func (c *systemdCollector) collectSystemState(conn *dbus.Conn, ch chan<- prometh
 }
 
 func newSystemdDbusConn() (*dbus.Conn, error) {
-	if *systemdPrivate {
+	switch {
+	case *systemdPrivate:
 		return dbus.NewSystemdConnection()
+	case *systemdUser:
+		return dbus.NewUserConnection()
+	default:
+		return dbus.New()
 	}
-	return dbus.New()
 }
 
 type unit struct {
